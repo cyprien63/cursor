@@ -6,3 +6,4 @@ __pycache__/
 .vscode/
 debug_previews.py
 debug_preview.png
+mappings.json

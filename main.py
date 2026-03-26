@@ -229,12 +229,13 @@ class CursorApp(ctk.CTk):
         base_name = os.path.splitext(filename)[0]
         display_name = base_name.split(" ", 1)[1] if " " in base_name else base_name
         
-        card = ctk.CTkFrame(parent, width=170, height=190, corner_radius=12, border_width=2)
+        # Increased height to fit dropdown
+        card = ctk.CTkFrame(parent, width=170, height=220, corner_radius=12, border_width=2)
         card.grid(row=index // cols, column=index % cols, padx=10, pady=10, sticky="nsew")
         card.grid_propagate(False)
 
         preview_box = ctk.CTkFrame(card, fg_color="#34373C", width=60, height=60, corner_radius=10)
-        preview_box.pack(pady=(15, 5))
+        preview_box.pack(pady=(10, 5))
         preview_box.pack_propagate(False)
 
         path = os.path.join(theme_path, filename)
@@ -246,24 +247,35 @@ class CursorApp(ctk.CTk):
             img_label = ctk.CTkLabel(preview_box, text="🖱️", font=ctk.CTkFont(size=30))
         img_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        reg_key = cursor_logic.get_role_from_filename(filename)
-        role_display = reg_key if reg_key else "Unknown"
-
+        reg_key = cursor_logic.get_role_from_filename(filename, theme=self.selected_theme)
+        
         ctk.CTkLabel(card, text=display_name, font=FONT_SMALL, text_color=COLOR_TEXT_MAIN, wraplength=150).pack(pady=(2, 0))
-        ctk.CTkLabel(card, text=f"Role: {role_display}", font=ctk.CTkFont(size=10), text_color=COLOR_TEXT_ALT).pack()
+        
+        # Role Selection Dropdown
+        roles = ["None", "Arrow", "Help", "AppStarting", "Wait", "Crosshair", "IBeam", "NWPen", "No", "SizeNS", "SizeWE", "SizeNWSE", "SizeNESW", "SizeAll", "UpArrow", "Hand"]
+        current_role = reg_key if reg_key else "None"
+        
+        role_dropdown = ctk.CTkComboBox(card, values=roles, width=130, height=24, font=ctk.CTkFont(size=10),
+                                      command=lambda r, f=filename: self.on_role_change(f, r))
+        role_dropdown.set(current_role)
+        role_dropdown.pack(pady=5)
         
         ctk.CTkButton(card, text="Apply", width=80, height=26, font=ctk.CTkFont(size=11),
                        fg_color="transparent", border_width=1, border_color=COLOR_ACCENT,
                        text_color=COLOR_ACCENT, hover_color="#333",
-                       command=lambda f=filename: self.on_set_individual(f)).pack(pady=10)
+                       command=lambda f=filename, d=role_dropdown: self.on_set_individual(f, d.get())).pack(pady=(5, 10))
 
-    def on_set_individual(self, filename):
-        reg_key = cursor_logic.get_role_from_filename(filename)
-        if reg_key:
+    def on_role_change(self, filename, new_role):
+        role = None if new_role == "None" else new_role
+        cursor_logic.save_custom_mapping(self.selected_theme, filename, role)
+        print(f"Saved custom mapping: {filename} -> {new_role}")
+
+    def on_set_individual(self, filename, role):
+        if role and role != "None":
             file_path = os.path.abspath(os.path.join(self.cursor_dir, self.selected_theme, filename))
-            cursor_logic.set_cursor(reg_key, file_path)
+            cursor_logic.set_cursor(role, file_path)
             cursor_logic.apply_cursors()
-            print(f"Applied {filename} to {reg_key}")
+            print(f"Applied {filename} to {role}")
 
     def on_apply_theme(self):
         theme_path = os.path.join(self.cursor_dir, self.selected_theme)

@@ -1,6 +1,7 @@
 import winreg
 import ctypes
 import os
+import json
 
 # Registry path for cursors
 REG_PATH = r"Control Panel\Cursors"
@@ -44,6 +45,32 @@ FILE_TO_REG = {
     "15 Link Select": "Hand"
 }
 
+# Path for custom mappings
+MAPPINGS_FILE = "mappings.json"
+
+def load_custom_mappings():
+    """Loads custom mappings from JSON file."""
+    if os.path.exists(MAPPINGS_FILE):
+        try:
+            with open(MAPPINGS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_custom_mapping(theme, filename, role):
+    """Saves a custom mapping for a specific file in a theme."""
+    mappings = load_custom_mappings()
+    if theme not in mappings:
+        mappings[theme] = {}
+    mappings[theme][filename] = role
+    
+    try:
+        with open(MAPPINGS_FILE, 'w') as f:
+            json.dump(mappings, f, indent=4)
+    except Exception as e:
+        print(f"Error saving mappings: {e}")
+
 # Keywords to identify cursor roles in filenames
 ROLE_KEYWORDS = {
     "Arrow": ["normal", "cursor", "arrow", "select", "pointer"],
@@ -63,11 +90,17 @@ ROLE_KEYWORDS = {
     "Hand": ["link", "hand", "pointer-blue", "pointer-reverse"]
 }
 
-def get_role_from_filename(filename):
+def get_role_from_filename(filename, theme=None):
     """
     Attempts to identify the Windows cursor role for a given filename.
-    Returns the role name (e.g., 'Arrow') or None.
+    If theme is provided, checks custom mappings first.
     """
+    # 0. Try custom mappings first if theme is provided
+    if theme:
+        custom = load_custom_mappings()
+        if theme in custom and filename in custom[theme]:
+            return custom[theme][filename]
+
     fn = filename.lower()
     
     # 1. Try exact Minecraft-style mapping first
@@ -75,8 +108,7 @@ def get_role_from_filename(filename):
     if base_name in FILE_TO_REG:
         return FILE_TO_REG[base_name]
 
-    # 2. Try the .crs file role or keyword matching
-    # Keyword matching is much more flexible for packs without strict naming
+    # 2. Keyword matching
     best_role = None
     max_priority = -1
     
@@ -187,10 +219,11 @@ def reset_to_default():
 
 def set_theme(directory):
     """Sets all cursors from a directory (theme) using smart mapping."""
+    theme_name = os.path.basename(directory)
     files = os.listdir(directory)
     for filename in files:
         if filename.endswith((".ani", ".cur")):
-            reg_key = get_role_from_filename(filename)
+            reg_key = get_role_from_filename(filename, theme=theme_name)
             if reg_key:
                 file_path = os.path.abspath(os.path.join(directory, filename))
                 set_cursor(reg_key, file_path)
