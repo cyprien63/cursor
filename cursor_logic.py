@@ -24,6 +24,26 @@ CURSOR_MAPPING = {
     "Link Select": "Hand"
 }
 
+# The user's Minecraft files have names like "01 Normal Select.ani"
+# We need to map these to the registry keys
+FILE_TO_REG = {
+    "01 Normal Select": "Arrow",
+    "02 Help Select": "Help",
+    "03 Working In Background": "AppStarting",
+    "04 Busy": "Wait",
+    "05 Precision Select": "Crosshair",
+    "06 Text Select": "IBeam",
+    "07 Handwriting": "NWPen",
+    "08 Unavailable": "No",
+    "09 Vertical Resize": "SizeNS",
+    "10 Horizontal Resize": "SizeWE",
+    "11 Diagonal Resize 1": "SizeNWSE",
+    "12 Diagonal Resize 2": "SizeNESW",
+    "13 Move": "SizeAll",
+    "14 Alternate Select": "UpArrow",
+    "15 Link Select": "Hand"
+}
+
 # Keywords to identify cursor roles in filenames
 ROLE_KEYWORDS = {
     "Arrow": ["normal", "cursor", "arrow", "select", "pointer"],
