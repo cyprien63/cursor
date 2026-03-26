@@ -24,25 +24,52 @@ CURSOR_MAPPING = {
     "Link Select": "Hand"
 }
 
-# The user's Minecraft files have names like "01 Normal Select.ani"
-# We need to map these to the registry keys
-FILE_TO_REG = {
-    "01 Normal Select": "Arrow",
-    "02 Help Select": "Help", # Wait? No, Help is Help.
-    "03 Working In Background": "AppStarting",
-    "04 Busy": "Wait",
-    "05 Precision Select": "Crosshair",
-    "06 Text Select": "IBeam",
-    "07 Handwriting": "NWPen",
-    "08 Unavailable": "No",
-    "09 Vertical Resize": "SizeNS",
-    "10 Horizontal Resize": "SizeWE",
-    "11 Diagonal Resize 1": "SizeNWSE",
-    "12 Diagonal Resize 2": "SizeNESW",
-    "13 Move": "SizeAll",
-    "14 Alternate Select": "UpArrow",
-    "15 Link Select": "Hand"
+# Keywords to identify cursor roles in filenames
+ROLE_KEYWORDS = {
+    "Arrow": ["normal", "cursor", "arrow", "select", "pointer"],
+    "Help": ["help"],
+    "AppStarting": ["working", "background", "loading", "loading-ring"],
+    "Wait": ["busy", "wait", "loading..."],
+    "Crosshair": ["precision", "cross"],
+    "IBeam": ["text", "ibeam"],
+    "NWPen": ["pen", "handwriting"],
+    "No": ["unavailable", "no", "denied"],
+    "SizeNS": ["vertical", "ns"],
+    "SizeWE": ["horizontal", "we"],
+    "SizeNWSE": ["nwse", "diagonal-1"],
+    "SizeNESW": ["nesw", "diagonal-2"],
+    "SizeAll": ["move", "grab"],
+    "UpArrow": ["alternate", "up"],
+    "Hand": ["link", "hand", "pointer-blue", "pointer-reverse"]
 }
+
+def get_role_from_filename(filename):
+    """
+    Attempts to identify the Windows cursor role for a given filename.
+    Returns the role name (e.g., 'Arrow') or None.
+    """
+    fn = filename.lower()
+    
+    # 1. Try exact Minecraft-style mapping first
+    base_name = os.path.splitext(filename)[0]
+    if base_name in FILE_TO_REG:
+        return FILE_TO_REG[base_name]
+
+    # 2. Try the .crs file role or keyword matching
+    # Keyword matching is much more flexible for packs without strict naming
+    best_role = None
+    max_priority = -1
+    
+    for role, keywords in ROLE_KEYWORDS.items():
+        for i, kw in enumerate(keywords):
+            if kw in fn:
+                # Lower index in keywords list means higher priority
+                priority = 100 - i
+                if priority > max_priority:
+                    max_priority = priority
+                    best_role = role
+    
+    return best_role
 
 SPI_SETCURSORS = 0x0057
 IMAGE_CURSOR = 2
@@ -139,13 +166,13 @@ def reset_to_default():
         return False
 
 def set_theme(directory):
-    """Sets all cursors from a directory (theme)."""
+    """Sets all cursors from a directory (theme) using smart mapping."""
     files = os.listdir(directory)
     for filename in files:
-        base_name = os.path.splitext(filename)[0]
-        if base_name in FILE_TO_REG:
-            reg_key = FILE_TO_REG[base_name]
-            file_path = os.path.abspath(os.path.join(directory, filename))
-            set_cursor(reg_key, file_path)
+        if filename.endswith((".ani", ".cur")):
+            reg_key = get_role_from_filename(filename)
+            if reg_key:
+                file_path = os.path.abspath(os.path.join(directory, filename))
+                set_cursor(reg_key, file_path)
     
     apply_cursors()

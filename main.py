@@ -246,19 +246,24 @@ class CursorApp(ctk.CTk):
             img_label = ctk.CTkLabel(preview_box, text="🖱️", font=ctk.CTkFont(size=30))
         img_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        ctk.CTkLabel(card, text=display_name, font=FONT_SMALL, text_color=COLOR_TEXT_ALT, wraplength=150).pack(pady=2)
+        reg_key = cursor_logic.get_role_from_filename(filename)
+        role_display = reg_key if reg_key else "Unknown"
+
+        ctk.CTkLabel(card, text=display_name, font=FONT_SMALL, text_color=COLOR_TEXT_MAIN, wraplength=150).pack(pady=(2, 0))
+        ctk.CTkLabel(card, text=f"Role: {role_display}", font=ctk.CTkFont(size=10), text_color=COLOR_TEXT_ALT).pack()
+        
         ctk.CTkButton(card, text="Apply", width=80, height=26, font=ctk.CTkFont(size=11),
                        fg_color="transparent", border_width=1, border_color=COLOR_ACCENT,
                        text_color=COLOR_ACCENT, hover_color="#333",
                        command=lambda f=filename: self.on_set_individual(f)).pack(pady=10)
 
     def on_set_individual(self, filename):
-        base_name = os.path.splitext(filename)[0]
-        if base_name in cursor_logic.FILE_TO_REG:
-            reg_key = cursor_logic.FILE_TO_REG[base_name]
+        reg_key = cursor_logic.get_role_from_filename(filename)
+        if reg_key:
             file_path = os.path.abspath(os.path.join(self.cursor_dir, self.selected_theme, filename))
             cursor_logic.set_cursor(reg_key, file_path)
             cursor_logic.apply_cursors()
+            print(f"Applied {filename} to {reg_key}")
 
     def on_apply_theme(self):
         theme_path = os.path.join(self.cursor_dir, self.selected_theme)
