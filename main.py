@@ -5,6 +5,8 @@ import cursor_logic
 import updater
 import threading
 import time
+import shutil
+from tkinter import filedialog, messagebox
 
 # --- Visual Constants ---
 COLOR_BG = "#1A1A1D"
@@ -32,6 +34,7 @@ class CursorApp(ctk.CTk):
         self.themes = []
         self.current_view = "startup"
         self.preview_images = {}
+        self.dev_mode = False
 
         self.setup_ui()
         self.start_startup_sequence()
@@ -44,7 +47,9 @@ class CursorApp(ctk.CTk):
 
         title_container = ctk.CTkFrame(self.header, fg_color="transparent")
         title_container.pack(side="left", padx=30, fill="y")
-        ctk.CTkLabel(title_container, text="Cursor Studio", font=FONT_TITLE, text_color=COLOR_TEXT_MAIN).pack(side="left", pady=10)
+        self.title_label = ctk.CTkLabel(title_container, text="Cursor Studio", font=FONT_TITLE, text_color=COLOR_TEXT_MAIN)
+        self.title_label.pack(side="left", pady=10)
+        self.title_label.bind("<Double-1>", self.on_title_double_click)
 
         self.back_btn = ctk.CTkButton(self.header, text="← Collections", width=120, height=36, 
                                      fg_color="transparent", border_width=1, border_color=COLOR_ACCENT,
@@ -52,7 +57,7 @@ class CursorApp(ctk.CTk):
                                      command=self.show_home)
         self.back_btn.pack(side="left", padx=20)
 
-        self.reset_btn = ctk.CTkButton(self.header, text="Reset Windows Default", width=180, height=36,
+        self.reset_btn = ctk.CTkButton(self.header, text=self.get_reset_text(), width=180, height=36,
                                       fg_color="#A93226", hover_color="#922B21", font=ctk.CTkFont(weight="bold"),
                                       command=self.on_reset)
         self.reset_btn.pack(side="right", padx=30)
@@ -165,9 +170,18 @@ class CursorApp(ctk.CTk):
         img_label.place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(card, text=theme, font=ctk.CTkFont(size=18, weight="bold"), text_color=COLOR_TEXT_MAIN).pack()
-        ctk.CTkButton(card, text="Explore Pack", width=180, height=40, corner_radius=20,
+        
+        btn_frame = ctk.CTkFrame(card, fg_color="transparent")
+        btn_frame.pack(pady=(20, 10))
+
+        ctk.CTkButton(btn_frame, text="Explore", width=120, height=40, corner_radius=20,
                      fg_color=COLOR_ACCENT, hover_color="#36719F",
-                     command=lambda t=theme: self.show_theme_detail(t)).pack(pady=(20, 10))
+                     command=lambda t=theme: self.show_theme_detail(t)).pack(side="left", padx=5)
+        
+        if self.dev_mode:
+            ctk.CTkButton(btn_frame, text="🚀 Publish", width=100, height=40, corner_radius=20,
+                         fg_color="#27AE60", hover_color="#229954",
+                         command=lambda t=theme: self.on_publish_theme(t)).pack(side="left", padx=5)
 
     def get_theme_preview(self, theme_path):
         if theme_path in self.preview_images:
@@ -281,8 +295,158 @@ class CursorApp(ctk.CTk):
         theme_path = os.path.join(self.cursor_dir, self.selected_theme)
         cursor_logic.set_theme(theme_path)
 
+    def get_reset_text(self):
+        if os.path.exists(os.path.join(self.cursor_dir, "Default")):
+            return "Reset to Custom Default"
+        return "Reset Windows Default"
+
     def on_reset(self):
-        cursor_logic.reset_to_default()
+        if cursor_logic.reset_to_default():
+            messagebox.showinfo("Success", "Cursors have been reset successfully.")
+            # Update button text in case they just added/removed 'Default' folder
+            self.reset_btn.configure(text=self.get_reset_text())
+
+    def on_title_double_click(self, event):
+        self.dev_mode = not self.dev_mode
+        status = "ACTIVE" if self.dev_mode else "INACTIVE"
+        colors = {"ACTIVE": "#27AE60", "INACTIVE": COLOR_TEXT_MAIN}
+        self.title_label.configure(text_color=colors[status])
+        
+        if self.dev_mode:
+            messagebox.showinfo("Developer Mode", "Developer Toolkit is now ACTIVE.")
+            self.show_dev_tools()
+        else:
+            messagebox.showinfo("Developer Mode", "Developer Mode is now INACTIVE.")
+            self.show_home()
+
+    def show_dev_tools(self):
+        self.current_view = "dev_tools"
+        self.show_nav_loading()
+        
+        def clear_and_build():
+            for widget in self.scrollable_content.winfo_children():
+                widget.destroy()
+
+            # --- Dev Header ---
+            header = ctk.CTkFrame(self.scrollable_content, fg_color="#2C2F33", corner_radius=15, height=150)
+            header.pack(fill="x", padx=10, pady=10)
+            header.pack_propagate(False)
+            
+            info = ctk.CTkFrame(header, fg_color="transparent")
+            info.pack(side="left", padx=30, fill="y")
+            ctk.CTkLabel(info, text="Developer Toolkit", font=FONT_SUBTITLE, text_color=COLOR_ACCENT).pack(anchor="w", pady=(30, 0))
+            ctk.CTkLabel(info, text="Import and Publish new cursor packs to GitHub", font=FONT_NORMAL, text_color=COLOR_TEXT_ALT).pack(anchor="w")
+            
+            actions = ctk.CTkFrame(header, fg_color="transparent")
+            actions.pack(side="right", padx=30, fill="y")
+            
+            ctk.CTkButton(actions, text="📥 Import New Pack", width=180, height=40, corner_radius=20,
+                         fg_color="#4E9CCF", hover_color="#36719F", font=ctk.CTkFont(weight="bold"),
+                         command=self.on_import_folder).pack(pady=10)
+                         
+            ctk.CTkButton(actions, text="🚀 Push All to GitHub", width=180, height=40, corner_radius=20,
+                         fg_color="#27AE60", hover_color="#229954", font=ctk.CTkFont(weight="bold"),
+                         command=self.on_push_all).pack(pady=10)
+            
+            # --- Theme List ---
+            ctk.CTkLabel(self.scrollable_content, text="New or Modified Collections (Identified by Git)", font=FONT_NORMAL, text_color=COLOR_TEXT_MAIN).pack(anchor="w", padx=20, pady=(20, 10))
+            
+            staged_themes = updater.get_staged_themes(self.cursor_dir)
+            
+            if not staged_themes:
+                ctk.CTkLabel(self.scrollable_content, text="No new or modified folders found.\nImport a folder to see it here.", font=FONT_SMALL, text_color=COLOR_TEXT_ALT).pack(pady=30)
+            else:
+                for theme in staged_themes:
+                    item = ctk.CTkFrame(self.scrollable_content, fg_color="#242526", height=60, corner_radius=10)
+                    item.pack(fill="x", padx=20, pady=5)
+                    item.pack_propagate(False)
+                    
+                    ctk.CTkLabel(item, text=f"📁 {theme}", font=FONT_NORMAL, text_color=COLOR_TEXT_MAIN).pack(side="left", padx=20)
+                    ctk.CTkLabel(item, text="Ready to Push", font=FONT_SMALL, text_color="#27AE60").pack(side="right", padx=30)
+            self.hide_nav_loading()
+            
+            # --- Online Collections Section ---
+            ctk.CTkLabel(self.scrollable_content, text="Online Collections (Manage/Delete from GitHub)", font=FONT_NORMAL, text_color=COLOR_TEXT_MAIN).pack(anchor="w", padx=20, pady=(30, 10))
+            
+            online_themes = updater.get_online_themes(self.cursor_dir)
+            if not online_themes:
+                ctk.CTkLabel(self.scrollable_content, text="No online collections found.", font=FONT_SMALL, text_color=COLOR_TEXT_ALT).pack(pady=20)
+            else:
+                for theme in online_themes:
+                    item = ctk.CTkFrame(self.scrollable_content, fg_color="#242526", height=60, corner_radius=10)
+                    item.pack(fill="x", padx=20, pady=5)
+                    item.pack_propagate(False)
+                    
+                    ctk.CTkLabel(item, text=f"🌐 {theme}", font=FONT_NORMAL, text_color=COLOR_TEXT_MAIN).pack(side="left", padx=20)
+                    
+                    ctk.CTkButton(item, text="🗑️ Delete from GitHub", width=160, height=32, corner_radius=16,
+                                 fg_color="#A93226", hover_color="#922B21", font=ctk.CTkFont(size=11),
+                                 command=lambda t=theme: self.on_delete_remote(t)).pack(side="right", padx=20)
+
+        self.after(0, clear_and_build)
+
+    def on_delete_remote(self, theme):
+        if not messagebox.askyesno("Confirm Deletion", f"Are you sure you want to delete '{theme}' from GitHub?\nThis will remove it for EVERYONE."):
+            return
+            
+        self.show_nav_loading()
+        theme_path = os.path.join(self.cursor_dir, theme)
+        
+        def task():
+            success, msg = updater.delete_remote_theme(theme_path)
+            self.after(0, lambda: self.finish_delete(success, msg))
+            
+        threading.Thread(target=task, daemon=True).start()
+
+    def finish_delete(self, success, message):
+        self.hide_nav_loading()
+        if success:
+            messagebox.showinfo("Deleted", message)
+            self.show_dev_tools() # Refresh view
+        else:
+            messagebox.showerror("Error", f"Failed to delete:\n{message}")
+
+    def on_import_folder(self):
+        target_dir = filedialog.askdirectory(title="Select Cursor Folder to Import")
+        if not target_dir:
+            return
+        
+        folder_name = os.path.basename(target_dir)
+        destination = os.path.join(self.cursor_dir, folder_name)
+        
+        if os.path.exists(destination):
+            if not messagebox.askyesno("Overwrite?", f"Folder '{folder_name}' already exists. Overwrite?"):
+                return
+            shutil.rmtree(destination)
+            
+        try:
+            self.show_nav_loading()
+            shutil.copytree(target_dir, destination)
+            messagebox.showinfo("Success", f"Imported '{folder_name}' successfully!")
+            self.show_dev_tools()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to import folder:\n{e}")
+        finally:
+            self.hide_nav_loading()
+
+    def on_push_all(self):
+        msg = filedialog.askstring("Commit Message", "Enter a description for this update:", initialvalue="Update cursor collections")
+        if msg is None: return # Cancelled
+        
+        self.show_nav_loading()
+        
+        def task():
+            success, res_msg = updater.push_all(msg)
+            self.after(0, lambda: self.finish_publish(success, res_msg))
+            
+        threading.Thread(target=task, daemon=True).start()
+
+    def finish_publish(self, success, message):
+        self.hide_nav_loading()
+        if success:
+            messagebox.showinfo("Success", message)
+        else:
+            messagebox.showerror("Error", f"Failed to push theme:\n{message}")
 
 if __name__ == "__main__":
     app = CursorApp()

@@ -9,7 +9,7 @@ REG_PATH = r"Control Panel\Cursors"
 # Map of cursor names to registry keys
 CURSOR_MAPPING = {
     "Normal Select": "Arrow",
-    "Help Select": "AppStarting", # Wait is Busy, AppStarting is Working in Background
+    "Help Select": "Help", 
     "Working In Background": "AppStarting",
     "Busy": "Wait",
     "Precision Select": "Crosshair",
@@ -203,12 +203,32 @@ def apply_cursors():
     ctypes.windll.user32.SystemParametersInfoW(SPI_SETCURSORS, 0, None, 0x01 | 0x02)
 
 def reset_to_default():
-    """Resets all cursors to Windows defaults."""
+    """
+    Resets all cursors. 
+    If a 'Default' folder exists in 'curseur/', applies that theme.
+    Otherwise, resets to Windows system defaults.
+    """
+    # 1. Check for custom 'Default' theme
+    default_theme_path = os.path.join("curseur", "Default")
+    if os.path.exists(default_theme_path) and os.path.isdir(default_theme_path):
+        print("Applying custom 'Default' theme...")
+        set_theme(default_theme_path)
+        return True
+
+    # 2. Fallback to Windows Defaults
+    print("Resetting to Windows system defaults...")
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_PATH, 0, winreg.KEY_SET_VALUE) as key:
-            for key_name in CURSOR_MAPPING.values():
+            # Correct keys to clear
+            standard_keys = [
+                "Arrow", "Help", "AppStarting", "Wait", "Crosshair", "IBeam",
+                "NWPen", "No", "SizeNS", "SizeWE", "SizeNWSE", "SizeNESW",
+                "SizeAll", "UpArrow", "Hand"
+            ]
+            for key_name in standard_keys:
                 winreg.SetValueEx(key, key_name, 0, winreg.REG_EXPAND_SZ, "")
-            # Also reset 'Scheme Name'
+            
+            # Reset Scheme Name
             winreg.SetValueEx(key, "", 0, winreg.REG_SZ, "Windows Default")
             
         apply_cursors()
