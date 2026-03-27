@@ -1,5 +1,6 @@
 import customtkinter as ctk
 import os
+import sys
 from PIL import Image, ImageTk
 from . import logic
 from . import updater
@@ -7,6 +8,17 @@ import threading
 import time
 import shutil
 from tkinter import filedialog, messagebox, simpledialog
+
+def get_base_folder():
+    """Returns the base folder for assets. Works for both script and EXE."""
+    if getattr(sys, 'frozen', False):
+        exe_path = os.path.dirname(sys.executable)
+        # If we are in dist/, the root is parent
+        if os.path.basename(exe_path).lower() == "dist":
+            return os.path.dirname(exe_path)
+        return exe_path
+    # In script mode, we are in app/, so base is parent
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # --- Visual Constants (Premium Dark Theme) ---
 COLOR_BG = "#0F0F12"
@@ -26,17 +38,28 @@ FONT_NORMAL = ("Inter", 14)
 FONT_BOLD = ("Inter", 14, "bold")
 FONT_SMALL = ("Inter", 12)
 
+# --- Versioning ---
+APP_VERSION = "1.1.0"
+
 class CursorApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("Cursor Studio - Premium Edition")
+        self.title(f"Cursor Studio v{APP_VERSION} - Premium Edition")
         self.geometry("1100x800")
         self.configure(fg_color=COLOR_BG)
         ctk.set_appearance_mode("dark")
 
         # Configuration
-        self.cursor_dir = "curseur"
+        base = get_base_folder()
+        os.chdir(base) # CRITICAL: Ensure we are at the root for relative paths and Git
+        
+        self.cursor_dir = os.path.join(base, "curseur")
+        self.repo_url = "https://github.com/cyprien63/cursor.git"
+        
+        if not os.path.exists(self.cursor_dir):
+            os.makedirs(self.cursor_dir)
+
         self.themes = []
         self.current_view = "startup"
         self.preview_images = {}
@@ -69,6 +92,13 @@ class CursorApp(ctk.CTk):
                                       command=self.on_reset)
         self.reset_btn.pack(side="right", padx=40)
 
+        self.update_btn = ctk.CTkButton(self.header, text="Mettre à jour", width=140, height=40, corner_radius=12,
+                                       fg_color="transparent", border_width=1.5, border_color=COLOR_ACCENT,
+                                       text_color=COLOR_ACCENT, hover_color="#2A2A2D",
+                                       font=FONT_BOLD,
+                                       command=self.force_update)
+        self.update_btn.pack(side="right", padx=10)
+
         # --- Progress Bar ---
         self.progress_bar = ctk.CTkProgressBar(self, height=4, corner_radius=0, fg_color=COLOR_BG, progress_color=COLOR_ACCENT)
         self.progress_bar.pack(fill="x")
@@ -86,22 +116,77 @@ class CursorApp(ctk.CTk):
         self.startup_overlay = ctk.CTkFrame(self, fg_color=COLOR_BG)
         self.startup_overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
         
-        self.loading_label = ctk.CTkLabel(self.startup_overlay, text="Initialisation du Studio", font=FONT_TITLE, text_color=COLOR_TEXT_MAIN)
-        self.loading_label.place(relx=0.5, rely=0.45, anchor="center")
+        # Glow Effect Background for text
+        self.loading_label = ctk.CTkLabel(self.startup_overlay, text="Cursor Studio", font=FONT_TITLE, text_color=COLOR_ACCENT)
+        self.loading_label.place(relx=0.5, rely=0.42, anchor="center")
         
-        self.loading_sublabel = ctk.CTkLabel(self.startup_overlay, text="Vérification des mises à jour et préparation des ressources...", font=FONT_NORMAL, text_color=COLOR_TEXT_ALT)
-        self.loading_sublabel.place(relx=0.5, rely=0.52, anchor="center")
+        self.loading_sublabel = ctk.CTkLabel(self.startup_overlay, text="Initialisation du système...", font=FONT_NORMAL, text_color=COLOR_TEXT_ALT)
+        self.loading_sublabel.place(relx=0.5, rely=0.48, anchor="center")
         
-        self.startup_progress = ctk.CTkProgressBar(self.startup_overlay, width=400, height=8, progress_color=COLOR_ACCENT)
-        self.startup_progress.place(relx=0.5, rely=0.6, anchor="center")
-        self.startup_progress.start()
+        # Styled Progress Bar with "Glow" (Using a background frame as shadow)
+        progress_container = ctk.CTkFrame(self.startup_overlay, fg_color="#1A1A1D", width=410, height=20, corner_radius=10)
+        progress_container.place(relx=0.5, rely=0.58, anchor="center")
+        
+        self.startup_progress = ctk.CTkProgressBar(progress_container, width=400, height=10, corner_radius=5, 
+                                                   progress_color=COLOR_ACCENT, fg_color="#1A1A1D")
+        self.startup_progress.place(relx=0.5, rely=0.5, anchor="center")
+        self.startup_progress.set(0)
 
     def start_startup_sequence(self):
         def task():
             try:
-                updater.update_repository()
-                time.sleep(1)
+                # Step 0: App Update Check
+                self.update_startup_status(0.05, "Recherche de mises à jour...")
+                latest_v = updater.get_latest_version(self.repo_url)
+                if latest_v and latest_v != APP_VERSION:
+                    if messagebox.askyesno("Mise à jour disponible", 
+                        f"Une nouvelle version ({latest_v}) est disponible.\n\n"
+                        f"Voulez-vous mettre à jour Cursor Studio maintenant ?"):
+                        self.update_startup_status(0.05, "Téléchargement du logiciel...")
+                        success, msg = updater.apply_app_update(self.repo_url)
+                        if success:
+                            messagebox.showinfo("Mise à jour", msg)
+                            self.after(0, sys.exit)
+                            return
+                        else:
+                            self.after(0, lambda m=msg: messagebox.showerror("Erreur", m))
+
+                # Step 1: Check and Download Packs
+                self.update_startup_status(0.1, "Vérification des packs...")
+                
+                has_themes = self.get_themes() != []
+                
+                if not has_themes:
+                    update_success = False
+                    # Only try Git if we are in a Git repo
+                    if updater.is_git_installed() and os.path.exists(os.path.join(get_base_folder(), ".git")):
+                        self.update_startup_status(0.3, "Restauration des packs (Git)...")
+                        update_success = updater.update_repository()
+                    
+                    if not update_success:
+                        self.update_startup_status(0.3, "Téléchargement des packs (GitHub)...")
+                        success, msg = updater.download_zip_from_github(self.repo_url, self.cursor_dir)
+                        if not success:
+                            self.after(0, lambda m=msg: messagebox.showerror("Erreur", 
+                                f"Impossible de télécharger les packs de curseurs.\nLog: {m}"))
+                else:
+                    # Optional: check for updates if it's a git repo
+                    base_f = get_base_folder()
+                    if updater.is_git_installed() and os.path.exists(os.path.join(base_f, ".git")):
+                        self.update_startup_status(0.3, "Vérification des mises à jour...")
+                        updater.update_repository()
+                
+                # Step 2: Pip Upgrade
+                self.update_startup_status(0.6, "Optimisation de l'environnement...")
+                updater.upgrade_pip()
+                
+                # Step 3: Finalize
+                self.update_startup_status(0.9, "Chargement des thèmes...")
                 self.themes = self.get_themes()
+                time.sleep(0.5)
+                
+                self.update_startup_status(1.0, "Prêt !")
+                time.sleep(0.3)
                 self.after(0, self.finish_startup)
             except Exception as e:
                 print(f"Startup error: {e}")
@@ -109,7 +194,13 @@ class CursorApp(ctk.CTk):
         
         threading.Thread(target=task, daemon=True).start()
 
+    def update_startup_status(self, value, message):
+        """Simplifies the progress update to prevent UI lag while still looking good."""
+        self.after(0, lambda v=value, m=message: (self.startup_progress.set(v), self.loading_sublabel.configure(text=m)))
+
     def finish_startup(self):
+        # Quick fade-out effect by reducing window alpha if possible, or just destroy
+        # For a more "pro" look, we just destroy it and show home
         self.startup_overlay.destroy()
         self.current_view = "home"
         self.show_home()
@@ -126,7 +217,11 @@ class CursorApp(ctk.CTk):
     def get_themes(self):
         if not os.path.exists(self.cursor_dir):
             return []
-        return [d for d in os.listdir(self.cursor_dir) if os.path.isdir(os.path.join(self.cursor_dir, d))]
+        # Exclude hidden or non-theme folders
+        return [d for d in os.listdir(self.cursor_dir) 
+                if os.path.isdir(os.path.join(self.cursor_dir, d)) 
+                and not d.startswith(".") 
+                and d not in ["__pycache__", "venv", "app"]]
 
     def show_home(self):
         self.current_view = "home"
@@ -322,6 +417,19 @@ class CursorApp(ctk.CTk):
             self.reset_btn.configure(text=self.get_reset_text())
 
     def on_title_double_click(self, event):
+        """Dev Tools: Force Download + Toggle Dev Mode."""
+        if messagebox.askyesno("Outils Développeur", "Voulez-vous forcer un téléchargement complet (Debug Mode) ?"):
+            self.show_nav_loading()
+            def task():
+                print("--- START DEBUG DOWNLOAD ---")
+                success, msg = updater.download_zip_from_github(self.repo_url, self.cursor_dir)
+                print(f"Result: {success}, Message: {msg}")
+                self.themes = self.get_themes()
+                self.after(0, self.show_home)
+                self.after(0, lambda: messagebox.showinfo("Débug", f"Résultat: {success}\nLog: {msg}\nPacks trouvés: {len(self.themes)}"))
+            threading.Thread(target=task, daemon=True).start()
+            return
+            
         self.dev_mode = not self.dev_mode
         status = "ACTIF" if self.dev_mode else "INACTIF"
         colors = {"ACTIF": COLOR_SUCCESS, "INACTIF": COLOR_TEXT_MAIN}
@@ -366,7 +474,7 @@ class CursorApp(ctk.CTk):
             # --- Theme List ---
             ctk.CTkLabel(self.scrollable_content, text="Collections Nouvelles ou Modifiées (Git)", font=FONT_BOLD, text_color=COLOR_TEXT_MAIN).pack(anchor="w", padx=20, pady=(20, 10))
             
-            staged_themes = updater.get_staged_themes(self.cursor_dir)
+            staged_themes = updater.get_staged_themes()
             
             if not staged_themes:
                 ctk.CTkLabel(self.scrollable_content, text="Aucun dossier nouveau ou modifié trouvé.\nImportez un dossier pour le voir ici.", font=FONT_NORMAL, text_color=COLOR_TEXT_ALT).pack(pady=30)
@@ -383,7 +491,7 @@ class CursorApp(ctk.CTk):
             # --- Online Collections Section ---
             ctk.CTkLabel(self.scrollable_content, text="Collections en Ligne (Gérer/Supprimer de GitHub)", font=FONT_BOLD, text_color=COLOR_TEXT_MAIN).pack(anchor="w", padx=20, pady=(40, 10))
             
-            online_themes = updater.get_online_themes(self.cursor_dir)
+            online_themes = updater.get_online_themes()
             if not online_themes:
                 ctk.CTkLabel(self.scrollable_content, text="Aucune collection en ligne trouvée.", font=FONT_NORMAL, text_color=COLOR_TEXT_ALT).pack(pady=20)
             else:
@@ -408,9 +516,11 @@ class CursorApp(ctk.CTk):
         theme_path = os.path.join(self.cursor_dir, theme)
         
         def task():
-            success, msg = updater.delete_remote_theme(theme_path)
+            # Ensure theme_path is relative to the repo root for Git
+            rel_theme_path = os.path.relpath(theme_path, get_base_folder())
+            success, msg = updater.delete_remote_theme(rel_theme_path)
             self.after(0, lambda: self.finish_delete(success, msg))
-            
+        
         threading.Thread(target=task, daemon=True).start()
 
     def finish_delete(self, success, message):
@@ -462,4 +572,25 @@ class CursorApp(ctk.CTk):
             messagebox.showinfo("Succès", "Mise à jour publiée avec succès sur GitHub !")
         else:
             messagebox.showerror("Erreur", f"Échec de la publication :\n{message}")
+
+    def force_update(self):
+        """Manually trigger a pack update (ZIP or Git)."""
+        if messagebox.askyesno("Mise à jour", "Voulez-vous forcer la vérification des packs de curseurs ?"):
+            self.show_nav_loading()
+            def update_task():
+                update_success = False
+                base_f = get_base_folder()
+                if updater.is_git_installed() and os.path.exists(os.path.join(base_f, ".git")):
+                    update_success = updater.update_repository()
+                
+                if not update_success:
+                    success, msg = updater.download_zip_from_github(self.repo_url, self.cursor_dir)
+                    if not success:
+                        self.after(0, lambda m=msg: messagebox.showerror("Erreur", f"Échec du téléchargement : {m}"))
+                
+                self.themes = self.get_themes()
+                self.after(0, self.show_home)
+                self.after(0, lambda: messagebox.showinfo("Succès", "Vérification des packs terminée !"))
+            
+            threading.Thread(target=update_task, daemon=True).start()
 
