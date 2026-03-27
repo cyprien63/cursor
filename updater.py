@@ -134,21 +134,23 @@ def push_all(message="Communal update"):
             return False, "Not a git repository."
         
         # 1. Git Add All
-        subprocess.run(["git", "add", "."], check=True, capture_output=True)
+        subprocess.run(["git", "add", "."], check=True, capture_output=True, text=True)
         
         # 2. Git Commit
-        subprocess.run(["git", "commit", "-m", message], check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", message], check=True, capture_output=True, text=True)
         
         # 3. Git Push
-        result = subprocess.run(["git", "push"], capture_output=True, text=True)
+        result = subprocess.run(["git", "push", "origin", "HEAD"], capture_output=True, text=True)
         if result.returncode != 0:
-            return False, result.stderr
+            return False, f"Push failed: {result.stderr}"
             
         return True, "Successfully pushed all changes to GitHub."
     except subprocess.CalledProcessError as e:
-        err_msg = e.stderr.decode() if e.stderr else str(e)
-        if "nothing to commit" in err_msg:
+        err_msg = e.stderr if e.stderr else str(e)
+        if "nothing to commit" in err_msg.lower():
+            res = subprocess.run(["git", "push", "origin", "HEAD"], capture_output=True, text=True)
+            if res.returncode == 0: return True, "Pushed existing changes."
             return True, "Nothing new to push."
-        return False, err_msg
+        return False, f"Git error: {err_msg}"
     except Exception as e:
         return False, str(e)

@@ -6,7 +6,7 @@ import updater
 import threading
 import time
 import shutil
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, simpledialog
 
 # --- Visual Constants ---
 COLOR_BG = "#1A1A1D"
@@ -430,7 +430,7 @@ class CursorApp(ctk.CTk):
             self.hide_nav_loading()
 
     def on_push_all(self):
-        msg = filedialog.askstring("Commit Message", "Enter a description for this update:", initialvalue="Update cursor collections")
+        msg = simpledialog.askstring("Commit Message", "Enter a description for this update:", initialvalue="Update cursor collections")
         if msg is None: return # Cancelled
         
         self.show_nav_loading()
