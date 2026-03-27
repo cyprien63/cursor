@@ -46,7 +46,7 @@ FILE_TO_REG = {
 }
 
 # Path for custom mappings
-MAPPINGS_FILE = "mappings.json"
+MAPPINGS_FILE = os.path.join(os.path.dirname(__file__), "mappings.json")
 
 def load_custom_mappings():
     """Loads custom mappings from JSON file."""
@@ -75,20 +75,43 @@ def save_custom_mapping(theme, filename, role):
 ROLE_KEYWORDS = {
     "Arrow": ["normal", "cursor", "arrow", "select", "pointer"],
     "Help": ["help"],
-    "AppStarting": ["working", "background", "loading", "loading-ring"],
-    "Wait": ["busy", "wait", "loading..."],
-    "Crosshair": ["precision", "cross"],
-    "IBeam": ["text", "ibeam"],
-    "NWPen": ["pen", "handwriting"],
-    "No": ["unavailable", "no", "denied"],
-    "SizeNS": ["vertical", "ns"],
-    "SizeWE": ["horizontal", "we"],
-    "SizeNWSE": ["nwse", "diagonal-1"],
-    "SizeNESW": ["nesw", "diagonal-2"],
-    "SizeAll": ["move", "grab"],
-    "UpArrow": ["alternate", "up"],
+    "AppStarting": ["working", "background", "loading", "appstarting", "work"],
+    "Wait": ["busy", "wait", "loading"],
+    "Crosshair": ["precision", "cross", "crosshair"],
+    "IBeam": ["text", "ibeam", "i-beam"],
+    "NWPen": ["pen", "handwriting", "nwpen"],
+    "No": ["unavailable", "no", "denied", "forbidden"],
+    "SizeNS": ["vertical", "ns", "n-s", "v resize", "size-ns"],
+    "SizeWE": ["horizontal", "we", "e-w", "h resize", "size-we"],
+    "SizeNWSE": ["nwse", "nw-se", "diagonal-1", "size-nwse"],
+    "SizeNESW": ["nesw", "ne-sw", "diagonal-2", "size-nesw"],
+    "SizeAll": ["move", "grab", "sizeall", "size-all"],
+    "UpArrow": ["alternate", "up", "uparrow"],
     "Hand": ["link", "hand", "pointer-blue", "pointer-reverse"]
 }
+
+# French translations for the UI
+ROLES_FR = {
+    "None": "Aucun",
+    "Arrow": "Sélection normale",
+    "Help": "Sélection d'aide",
+    "AppStarting": "Travail en arrière-plan",
+    "Wait": "Occupé",
+    "Crosshair": "Sélection de précision",
+    "IBeam": "Sélection de texte",
+    "NWPen": "Écriture manuscrite",
+    "No": "Indisponible",
+    "SizeNS": "Redimensionnement vertical",
+    "SizeWE": "Redimensionnement horizontal",
+    "SizeNWSE": "Redimensionnement diagonal 1",
+    "SizeNESW": "Redimensionnement diagonal 2",
+    "SizeAll": "Déplacement",
+    "UpArrow": "Sélection alternative",
+    "Hand": "Sélection de lien"
+}
+
+# Reverse mapping for UI to logic
+FR_TO_ROLES = {v: k for k, v in ROLES_FR.items()}
 
 def get_role_from_filename(filename, theme=None):
     """

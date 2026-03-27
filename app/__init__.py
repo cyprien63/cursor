@@ -1,0 +1,1 @@
+# Cursor Studio App Module

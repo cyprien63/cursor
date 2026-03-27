@@ -1,0 +1,162 @@
+{
+  "flames": [
+    {
+      "file": "Alternate Select.cur",
+      "role": "UpArrow"
+    },
+    {
+      "file": "Arrow.cur",
+      "role": "Arrow"
+    },
+    {
+      "file": "Busy.cur",
+      "role": "Wait"
+    },
+    {
+      "file": "Crosshair.cur",
+      "role": "Crosshair"
+    },
+    {
+      "file": "Hand.cur",
+      "role": "Hand"
+    },
+    {
+      "file": "Help.cur",
+      "role": "Help"
+    },
+    {
+      "file": "Pen.cur",
+      "role": "NWPen"
+    },
+    {
+      "file": "SizeAll.cur",
+      "role": "SizeAll"
+    },
+    {
+      "file": "SizeE-W.cur",
+      "role": "SizeWE"
+    },
+    {
+      "file": "SizeN-S.cur",
+      "role": "SizeNS"
+    },
+    {
+      "file": "SizeNE-SW.cur",
+      "role": "SizeNESW"
+    },
+    {
+      "file": "SizeNW-SE.cur",
+      "role": "SizeNWSE"
+    },
+    {
+      "file": "Text.cur",
+      "role": "IBeam"
+    },
+    {
+      "file": "Working.cur",
+      "role": "AppStarting"
+    }
+  ],
+  "never-lost-rainbow": [
+    {
+      "file": "Never-Lost Rainbow 01a (select).ani",
+      "role": "Arrow"
+    },
+    {
+      "file": "Never-Lost Rainbow 01b (select).ani",
+      "role": "Arrow"
+    },
+    {
+      "file": "Never-Lost Rainbow 01c (select).ani",
+      "role": "Arrow"
+    },
+    {
+      "file": "Never-Lost Rainbow 02 (help select).ani",
+      "role": "Help"
+    },
+    {
+      "file": "Never-Lost Rainbow 03 (work background).ani",
+      "role": "AppStarting"
+    },
+    {
+      "file": "Never-Lost Rainbow 03a (work background).ani",
+      "role": "AppStarting"
+    },
+    {
+      "file": "Never-Lost Rainbow 04a (busy).ani",
+      "role": "Wait"
+    },
+    {
+      "file": "Never-Lost Rainbow 04b (busy).ani",
+      "role": "Wait"
+    },
+    {
+      "file": "Never-Lost Rainbow 04c (busy).ani",
+      "role": "Wait"
+    },
+    {
+      "file": "Never-Lost Rainbow 05 (precision).ani",
+      "role": "Crosshair"
+    },
+    {
+      "file": "Never-Lost Rainbow 06a (text).ani",
+      "role": "IBeam"
+    },
+    {
+      "file": "Never-Lost Rainbow 06b (text).ani",
+      "role": "IBeam"
+    },
+    {
+      "file": "Never-Lost Rainbow 08 (unavailable).ani",
+      "role": "No"
+    },
+    {
+      "file": "Never-Lost Rainbow 09a (v resize).ani",
+      "role": "SizeNS"
+    },
+    {
+      "file": "Never-Lost Rainbow 09b (v resize).ani",
+      "role": "SizeNS"
+    },
+    {
+      "file": "Never-Lost Rainbow 10a (h resize).ani",
+      "role": "SizeWE"
+    },
+    {
+      "file": "Never-Lost Rainbow 10b (h resize).ani",
+      "role": "SizeWE"
+    },
+    {
+      "file": "Never-Lost Rainbow 11a (nw-se resize).ani",
+      "role": "SizeNWSE"
+    },
+    {
+      "file": "Never-Lost Rainbow 11b (nw-se resize).ani",
+      "role": "SizeNWSE"
+    },
+    {
+      "file": "Never-Lost Rainbow 12a (ne-sw resize).ani",
+      "role": "SizeNESW"
+    },
+    {
+      "file": "Never-Lost Rainbow 12b (ne-sw resize).ani",
+      "role": "SizeNESW"
+    },
+    {
+      "file": "Never-Lost Rainbow 13a (move).ani",
+      "role": "SizeAll"
+    },
+    {
+      "file": "Never-Lost Rainbow 13b (move).ani",
+      "role": "SizeAll"
+    },
+    {
+      "file": "Never-Lost Rainbow 15a (link select).ani",
+      "role": "Hand"
+    },
+    {
+      "file": "Never-Lost Rainbow 15b (link select).ani",
+      "role": "Hand"
+    }
+  ]
+}
